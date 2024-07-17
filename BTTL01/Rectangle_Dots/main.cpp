@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
 	glutInitWindowSize(CurrentWidth, CurrentHeight);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 
-	WindowHandle = glutCreateWindow("3 Dot");
+	WindowHandle = glutCreateWindow("4 Dots Rectangle");
 	if (WindowHandle < 1) {
 		fprintf(stderr, "ERROR: Could not create a new rendering window.\n");
 		exit(EXIT_FAILURE);

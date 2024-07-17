@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{3ad0af9c-37ba-4298-a0f0-f75040c72e58}</ProjectGuid>
-    <RootNamespace>BTTL02</RootNamespace>
+    <ProjectGuid>{d169c6fe-4224-4047-9816-c86e4064b626}</ProjectGuid>
+    <RootNamespace>HexagonDots</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
