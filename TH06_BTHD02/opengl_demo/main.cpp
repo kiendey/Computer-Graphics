@@ -1,8 +1,13 @@
 ﻿#include <iostream>
 #include <fstream>
 #include <string>
+#include <assert.h>
+
 #include <GL/glew.h>
 #include <GL/freeglut.h>
+
+#include <Vector_Matrix.h>
+
 
 using namespace std;
 
@@ -12,25 +17,47 @@ typedef struct
 	float RGBA[4];
 } Vertex;
 
-// tạo 3 điểm đỉnh
 Vertex Vertices[] =
 {
-	{ { -0.5f, 0.0f, 0.0f, 1.0f },{ 0.4f, 0.2f, 1.0f, 1.0f } },
-	{ {-0.3f, -0.5f, 0.0f, 1.0f },{ 1.0f, 0.5f, 0.3f, 1.0f } },
-	{ { 0.3f,  -0.5f, 0.0f, 1.0f },{ 0.2f, 1.0f, 0.0f, 1.0f } },
-	{ { 0.5f, 0.0f, 0.0f, 1.0f },{ 0.0f, 0.0f, 1.0f, 1.0f } },
-	{ { 0.3f, 0.5f, 0.0f, 1.0f },{ 0.0f, 0.6f, 1.0f, 1.0f } },
-	{ { -0.3f, 0.5f, 0.0f, 1.0f },{ 0.3f, 0.8f, 1.0f, 1.0f } },
+	// bottom
+{ { -0.5f,	-0.5f,	 0.5f,	1.0f },{ 0.5f,	0.5f,	0.5f,	1.0f } },
+{ { 0.5f,	-0.5f,	-0.5f,	1.0f },{ 0.5f,	0.5f,	0.5f,	1.0f } },
+{ { -0.5f,	-0.5f,	-0.5f,	1.0f },{ 0.5f,	0.5f,	0.5f,	1.0f } },
+
+{ { 0.5f,	-0.5f,	-0.5f,	1.0f },{ 0.5f,	0.5f,	0.5f,	1.0f } },
+{ { -0.5f,	-0.5f,	 0.5f,	1.0f },{ 0.5f,	0.5f,	0.5f,	1.0f } },
+{ { 0.5f,	-0.5f,	 0.5f,	1.0f },{ 0.5f,	0.5f,	0.5f,	1.0f } },
+
+// right
+{ { 0.0f,	 0.5f,	 0.0f,	1.0f },{ 0.0f,	1.0f,	0.0f,	1.0f } },
+{ { 0.5f,	-0.5f,	 0.5f,	1.0f },{ 0.0f,	1.0f,	0.0f,	1.0f } },
+{ { 0.5f,	-0.5f,  -0.5f,1.0f },{ 0.0f,	1.0f,	0.0f,	1.0f } },
+
+// left
+{ { 0.0f,	 0.5f,	 0.0f,	1.0f },{ 0.0f,	0.0f,	1.0f,	1.0f } },
+{ { -0.5f,	-0.5f,	-0.5f,	1.0f },{ 0.0f,	0.0f,	1.0f,	1.0f } },
+{ { -0.5f,	-0.5f,	 0.5f,	1.0f },{ 0.0f,	0.0f,	1.0f,	1.0f } },
+
+// front
+{ { 0.0f,	 0.5f,	 0.0f,	1.0f },{ 1.0f,	1.0f,	1.0f,	1.0f } },
+{ { -0.5f,	-0.5f,	 0.5f,	1.0f },{ 1.0f,	1.0f,	1.0f,	1.0f } },
+{ { 0.5f,	-0.5f,	 0.5f,	1.0f },{ 1.0f,	1.0f,	1.0f,	1.0f } },
+
+// back
+{ { 0.0f,	 0.5f,	 0.0f,	1.0f },{ 1.0f,	0.0f,	0.0f,	1.0f } },
+{ { 0.5f,	-0.5f,  -0.5f,1.0f },{ 1.0f,	0.0f,	0.0f,	1.0f } },
+{ { -0.5f,	-0.5f,  -0.5f,1.0f },{ 1.0f,	0.0f,	0.0f,	1.0f } }
+
+
 };
 
 const size_t BufferSize = sizeof(Vertices);
 const size_t VertexSize = sizeof(Vertices[0]);
 const size_t RgbOffset = sizeof(Vertices[0].XYZW);
 
-int
-CurrentWidth = 800,
-CurrentHeight = 600,
-WindowHandle = 0;
+
+int CurrentWidth = 700,
+CurrentHeight = 700;
 
 GLuint
 VaoId,
@@ -39,7 +66,16 @@ VertexShaderId,
 FragmentShaderId,
 ProgramId;
 
-// ---------------------------------------------------------------------------	
+mat4
+view_mat_cpp,			//Ma trận view
+projection_mat_cpp;		//Ma trận projection
+
+// Biến truyền dữ liệu cho uniform
+int
+view_mat_location,
+projection_mat_location;
+
+// ------------------------------------------
 string ReadShaderSourceFile(string fileName) {
 	fstream reader(fileName.c_str());
 	string line;
@@ -50,11 +86,10 @@ string ReadShaderSourceFile(string fileName) {
 	reader.close();
 	return code;
 }
-// ---------------------------------------------------------------------------	
+
+// ------------------------------------------
 void CreatVaoVbo()
 {
-	GLenum ErrorCheckValue = glGetError();
-
 	glGenVertexArrays(1, &VaoId);
 	glBindVertexArray(VaoId);
 
@@ -67,26 +102,16 @@ void CreatVaoVbo()
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
-
-	ErrorCheckValue = glGetError();
-	if (ErrorCheckValue != GL_NO_ERROR)
-	{
-		fprintf(stderr, "ERROR: Could not destroy the VBO: %s \n", gluErrorString(ErrorCheckValue));
-		exit(-1);
-	}
 }
-// ---------------------------------------------------------------------------	
+// ------------------------------------------
 void CreatShaders()
 {
-	GLenum ErrorCheckValue = glGetError();
-
 	string vertexSrc = ReadShaderSourceFile("./vs.shader");
 	string fragmentSrc = ReadShaderSourceFile("./fs.shader");
 
 	const GLchar* VertexShader = vertexSrc.c_str();
 	const GLchar* FragmentShader = fragmentSrc.c_str();
 
-	ErrorCheckValue = glGetError();
 	VertexShaderId = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(VertexShaderId, 1, &VertexShader, NULL);
 	glCompileShader(VertexShaderId);
@@ -100,24 +125,10 @@ void CreatShaders()
 	glAttachShader(ProgramId, FragmentShaderId);
 	glLinkProgram(ProgramId);
 	glUseProgram(ProgramId);
-
-	ErrorCheckValue = glGetError();
-	if (ErrorCheckValue != GL_NO_ERROR)
-	{
-		fprintf(
-			stderr,
-			"ERROR: Could not create the shaders: %s \n",
-			gluErrorString(ErrorCheckValue)
-		);
-
-		exit(-1);
-	}
 }
-// ---------------------------------------------------------------------------	
+// ------------------------------------------
 void CloseFunc()
 {
-	GLenum ErrorCheckValue = glGetError();
-
 	glUseProgram(0);
 
 	glDetachShader(ProgramId, VertexShaderId);
@@ -128,18 +139,6 @@ void CloseFunc()
 
 	glDeleteProgram(ProgramId);
 
-	ErrorCheckValue = glGetError();
-	if (ErrorCheckValue != GL_NO_ERROR)
-	{
-		fprintf(
-			stderr,
-			"ERROR: Could not destroy the shaders: %s \n",
-			gluErrorString(ErrorCheckValue)
-		);
-
-		exit(-1);
-	}
-
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(0);
 
@@ -148,31 +147,42 @@ void CloseFunc()
 
 	glBindVertexArray(0);
 	glDeleteVertexArrays(1, &VaoId);
-
-	ErrorCheckValue = glGetError();
-	if (ErrorCheckValue != GL_NO_ERROR)
-	{
-		fprintf(stderr, "ERROR: Could not destroy the VBO: %s \n", gluErrorString(ErrorCheckValue));
-		exit(-1);
-	}
 }
-// ---------------------------------------------------------------------------	
+// ------------------------------------------
+
 void DisplayFunc(void)
 {
-	glClearColor(0.0, 0.0, 0.0, 0.0);
+	// Các tham số của hàm lookat
+	vec3	eye(1.0f, 0.0f, 2.0f),
+		at(0.0f, 0.0f, 0.0f),
+		up(0.0f, 1.0f, 0.0f);
 
+	view_mat_cpp = lookat(eye, at, up);
+	view_mat_location = glGetUniformLocation(ProgramId, "view_mat_shader");
+	glUniformMatrix4fv(view_mat_location, 1, GL_FALSE, view_mat_cpp.m);
+
+	// Các tham số của phép chiếu perspective
+	float
+		znear = 1.0f,
+		zfar = 100.0f,
+		fov = 67.0f,
+		aspect = (float)CurrentWidth / CurrentHeight;
+
+	// Tạo ma trận projection 
+	projection_mat_cpp = perspective(fov, aspect, znear, zfar);
+	projection_mat_location = glGetUniformLocation(ProgramId, "projection_mat_shader");
+	glUniformMatrix4fv(projection_mat_location, 1, GL_FALSE, projection_mat_cpp.m);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// kết xuất nguyên thủy từ mảng dữ liệu
-	// GL_POINTS: là loại nguyên thủy
-	// 0: là chỉ số bắt đầu trong mảng đang kích hoạt
-	// 3: số lượng chỉ số sẽ được kết xuất
-	glDrawArrays(GL_POINTS, 0, 6);
-
+	glDrawArrays(GL_TRIANGLES, 0, 18);
 	glutSwapBuffers();
-
 }
-// ---------------------------------------------------------------------------	
+// ------------------------------------------
 void ReshapeFunc(int Width, int Height)
 {
 	CurrentWidth = Width;
@@ -180,49 +190,34 @@ void ReshapeFunc(int Width, int Height)
 
 	glViewport(0, 0, CurrentWidth, CurrentHeight);
 }
-// ---------------------------------------------------------------------------	
+// ------------------------------------------
 void IdleFunc(void)
 {
 	glutPostRedisplay();
 }
-// ---------------------------------------------------------------------------	
+// ------------------------------------------
 void KeyboardFunc(unsigned char key, int x, int y)
 {
 	switch (key) {
 	case 27:
-	case 'q':
-	case 'Q':
-		exit(EXIT_SUCCESS);
-		break;
-
-	default:
-		break;
+		exit(EXIT_SUCCESS); break;
 	}
 }
-// ---------------------------------------------------------------------------
+
+// ------------------------------------------
 int main(int argc, char* argv[])
 {
 	glutInit(&argc, argv);
-
+	glutInitContextVersion(4, 0);
+	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
+	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 	glutInitWindowSize(CurrentWidth, CurrentHeight);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+	glutCreateWindow("Lookat-Perspective");
 
-	WindowHandle = glutCreateWindow("Hexagon Dots");
-	if (WindowHandle < 1) {
-		fprintf(stderr, "ERROR: Could not create a new rendering window.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	GLenum GlewInitResult;
 	glewExperimental = GL_TRUE;
-	GlewInitResult = glewInit();
-
-	if (GLEW_OK != GlewInitResult) {
-		fprintf(stderr, "ERROR: %s\n", glewGetErrorString(GlewInitResult));
-		exit(EXIT_FAILURE);
-	}
-
-	fprintf(stdout, "INFO: OpenGL Version: %s\n", glGetString(GL_VERSION));
+	glewInit();
 
 	CreatVaoVbo();
 	CreatShaders();
@@ -234,6 +229,5 @@ int main(int argc, char* argv[])
 	glutCloseFunc(CloseFunc);
 
 	glutMainLoop();
-
 	return 0;
 }
